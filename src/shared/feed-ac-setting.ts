@@ -49,6 +49,11 @@ export interface FeedAcSettingsV2 {
   watchTimeRangeSeconds: [number, number]
   onlyCommentActiveVideo: boolean
   maxCount: number
+  isSearchEnabled: boolean
+  searchWord: string
+  searchSort: string
+  searchTimeRange: string
+  
 }
 
 // 联合类型，支持两种版本

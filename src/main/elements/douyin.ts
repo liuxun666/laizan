@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test'
-import { sleep } from '@/utils/common'
+import { random, sleep } from '@/utils/common'
 
 export default class DYElementHandler {
   private _page?: Page
@@ -38,6 +38,8 @@ export default class DYElementHandler {
     try {
       // 使用键盘快捷键 "X" 关闭评论区
       console.log('使用快捷键X关闭评论区')
+      await this._page?.locator('#semiTabcomment').click()
+      await sleep(random(1000, 2000))
       await this._page?.keyboard.press('x')
 
       // 给评论区收起一些时间
@@ -51,7 +53,7 @@ export default class DYElementHandler {
   async closeCommentSectionByButton(): Promise<void> {
     try {
       // 使用评论按钮选择器
-      const commentButtonSelector = '[data-e2e="feed-active-video"] [data-e2e="feed-comment-icon"]'
+      const commentButtonSelector = '[data-e2e="feed-comment-icon"]'
       console.log('通过点击评论按钮关闭评论区')
 
       // 等待评论按钮可见并点击

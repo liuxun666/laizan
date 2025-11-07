@@ -101,9 +101,11 @@ export default class ACTask extends EventEmitter {
     this._dyElementHandler = new DYElementHandler(this._page)
   }
 
+  
+
   public async run(): Promise<string> {
-    await this._launch()
     const settings = getFeedAcSettings()
+    await this._launch()
 
     console.log(`任务已启动，ID: ${this._taskId}`)
 
@@ -111,6 +113,9 @@ export default class ACTask extends EventEmitter {
     await this._setupVideoDataListener()
     console.log('视频数据监听已设置')
     this._emitProgress('ready', '视频数据监听已设置')
+    if (settings.isSearchEnabled) {
+      await this.searchByConfig(settings)
+    }
     // 等待假视频图片消失 (recommend-fake-video-img)
     await this._page!.waitForSelector('.recommend-fake-video-img', {
       state: 'detached'
@@ -150,7 +155,7 @@ export default class ACTask extends EventEmitter {
         this._emitProgress('info-miss', '未获取到当前视频信息，跳到下一个视频')
         // 记录视频信息缺失
         this._recordVideoSkip('unknown', '未获取到当前视频信息', {})
-        await sleep(random(1000, 3000))
+        await sleep(random(2000, 6000))
         await this._dyElementHandler.goToNextVideo()
         continue
       }
@@ -197,7 +202,7 @@ export default class ACTask extends EventEmitter {
         this._emitProgress('skip-blocked', '命中屏蔽关键词，跳过该视频')
         // 记录命中屏蔽关键词
         this._recordVideoSkip(videoInfo.aweme_id, '命中屏蔽关键词', videoInfo)
-        await sleep(random(500, 1000))
+        await sleep(random(1500, 3000))
         await this._dyElementHandler.goToNextVideo()
         continue
       }
@@ -215,7 +220,7 @@ export default class ACTask extends EventEmitter {
           await sleep(watchTime)
         }
 
-        // await this._randomLike()
+        await this._randomLike()
 
         // 打开评论区
         console.log('打开评论区并监听评论接口')
@@ -283,7 +288,7 @@ export default class ACTask extends EventEmitter {
         await sleep(random(500, 3000))
       } else {
         // 不需要评论的视频快速滑走
-        await sleep(random(500, 1500))
+        await sleep(random(2500, 6500))
         console.log('当前视频不满足评论规则，快速滑走')
         this._emitProgress('fast-skip', '快速滑走')
         // 记录规则不匹配
@@ -349,6 +354,36 @@ export default class ACTask extends EventEmitter {
           console.log('解析视频Feed接口响应时出错:', error)
         }
       }
+      // 搜索结果
+      if (url.includes('https://www.douyin.com/aweme/v1/web/general/search/single/')) {
+        console.log('捕获到视频Search接口请求')
+
+        try {
+          // 尝试解析JSON响应
+          const res = await response.json()
+          const aweme_list = []
+          for (let i = 0; i < res.data.length; i++) {
+            const aweme_item = res.data[i]['aweme_info'] as FeedItem
+            if (aweme_item) {
+              aweme_list.push(aweme_item)
+            }
+          }
+          const responseBody = { aweme_list: aweme_list } as FeedListResponse
+          if (responseBody && responseBody.aweme_list && Array.isArray(responseBody.aweme_list)) {
+            console.log(`接收到${responseBody.aweme_list.length}条视频数据`)
+
+            // 缓存视频数据
+            responseBody.aweme_list.forEach((video) => {
+              this._videoDataCache.set(video.aweme_id, video)
+              console.log(`缓存视频数据 ID: ${video.aweme_id}`)
+            })
+
+            console.log(`视频数据缓存更新，当前缓存数量: ${this._videoDataCache.size}`)
+          }
+        } catch (error) {
+          console.log('解析视频aweme_item接口响应时出错:', error)
+        }
+      }
     })
   }
 
@@ -364,7 +399,7 @@ export default class ACTask extends EventEmitter {
   async _getCurrentVideoInfo(): Promise<FeedItem | null> {
     try {
       // 查找当前活跃视频元素
-      const activeVideoElement = await this._page?.$('[data-e2e="feed-active-video"]')
+      const activeVideoElement = this._page?.locator('[data-e2e="feed-active-video"]').last()
 
       if (!activeVideoElement) {
         console.log('未找到当前活跃视频元素')
@@ -379,7 +414,7 @@ export default class ACTask extends EventEmitter {
         return null
       }
 
-      console.log(`当前活跃视频ID: ${videoId}`)
+      console.log(`当前活跃视频ID: ${videoId} 当前缓存：${Array.from(this._videoDataCache.keys())}`)
 
       // 从缓存中查找视频数据
       const videoData = this._videoDataCache.get(videoId)
@@ -422,7 +457,6 @@ export default class ACTask extends EventEmitter {
     videoInfo: FeedItem
   ): Promise<FeedAcRuleGroups | null> {
     let currentRuleGroupMatched = false
-
     // 如果是AI判断类型
     if (ruleGroup.type === 'ai' && ruleGroup.aiPrompt) {
       try {
@@ -501,6 +535,10 @@ export default class ACTask extends EventEmitter {
     shouldViewComment: boolean
     matchedRuleGroup?: FeedAcRuleGroups
   }> {
+    if(videoInfo.statistics.comment_count < 40 || videoInfo.statistics.comment_count > 2000) {
+        console.log(`视频评论数量: ${videoInfo.statistics.comment_count} 不符合条件，跳过该视频`)
+        return { shouldSimulateWatch: false, shouldViewComment: false }
+      }
     // 使用V2规则组匹配
     const matchedRuleGroup = await this._matchRuleGroups(settings.ruleGroups, videoInfo)
 
@@ -542,8 +580,8 @@ export default class ACTask extends EventEmitter {
   // 随机点赞操作，按10%概率执行
   async _randomLike(): Promise<boolean> {
     try {
-      // 按照10%的概率进行点赞操作
-      const shouldLike = Math.random() < 0.1
+      // 按照20%的概率进行点赞操作
+      const shouldLike = Math.random() < 0.2
       if (shouldLike) {
         console.log('随机触发点赞操作')
         await this._dyElementHandler.like()
@@ -579,29 +617,7 @@ export default class ACTask extends EventEmitter {
         return { success: false, reason: '未找到评论输入框容器' }
       }
 
-      await inputContainer.click()
-      console.log('成功点击评论输入框容器')
-
-      // 等待一小段时间确保输入框已聚焦
-      await sleep(1000)
-
-      // 模拟人类输入行为，一个字符一个字符地输入，并在字符之间添加随机延迟
-      console.log(`开始模拟人类输入评论: ${randomComment}`)
-      for (let i = 0; i < randomComment.length; i++) {
-        // 输入单个字符
-        await this._page?.keyboard.type(randomComment[i])
-
-        // 添加随机延迟，模拟人类输入速度（100-300毫秒）
-        await sleep(random(100, 300))
-
-        // 随机在某些字符后暂停稍长时间（模拟思考）
-        if (Math.random() < 0.1 && i < randomComment.length - 1) {
-          const pauseDelay = Math.floor(Math.random() * 500) + 300
-          await sleep(pauseDelay)
-        }
-      }
-
-      console.log(`完成模拟人类输入评论: ${randomComment}`)
+      await this.humanInput(inputContainer, randomComment)
 
       // 随机等待1-3秒
       await sleep(random(1000, 3000))
@@ -736,6 +752,32 @@ export default class ACTask extends EventEmitter {
       console.log('发布评论时出错:', error)
       return { success: false, reason: String(error) }
     }
+  }
+
+  private async humanInput(inputContainer: any, text: string) {
+    await inputContainer.click()
+    console.log('成功点击评论输入框容器')
+
+    // 等待一小段时间确保输入框已聚焦
+    await sleep(1000)
+
+    // 模拟人类输入行为，一个字符一个字符地输入，并在字符之间添加随机延迟
+    console.log(`开始模拟人类输入评论: ${text}`)
+    for (let i = 0; i < text.length; i++) {
+      // 输入单个字符
+      await this._page?.keyboard.type(text[i])
+
+      // 添加随机延迟，模拟人类输入速度（100-300毫秒）
+      await sleep(random(100, 300))
+
+      // 随机在某些字符后暂停稍长时间（模拟思考）
+      if (Math.random() < 0.1 && i < text.length - 1) {
+        const pauseDelay = Math.floor(Math.random() * 500) + 300
+        await sleep(pauseDelay)
+      }
+    }
+
+    console.log(`完成模拟人类输入评论: ${text}`)
   }
 
   // 随机选择评论内容
@@ -1013,5 +1055,33 @@ export default class ACTask extends EventEmitter {
     }
 
     taskHistoryService.addVideoRecord(this._taskId, videoRecord)
+  }
+
+  private async searchByConfig(settings: FeedAcSettingsV2) {
+    const searchElement = await this._page!.waitForSelector('[data-e2e="searchbar-input"]')
+    // const searchElement = await this._page?.$('[data-e2e="searchbar-input"]')
+    if (searchElement) {
+      await this.humanInput(searchElement, settings.searchWord)
+      await this._page?.keyboard.press('Enter')
+      console.log('已输入搜索词，正在搜索...')
+      await this._page!.waitForSelector('#search-result-container')
+      console.log('搜索完成')
+      if (settings.searchSort && settings.searchSort != '综合排序') {
+        await this._page!.getByText('筛选', { exact: true }).hover()
+        await sleep(random(1000, 2000))
+        await this._page!.getByText(settings.searchSort, { exact: true }).click()
+      }
+      if (settings.searchTimeRange && settings.searchTimeRange != '不限') {
+        await this._page!.getByText('筛选', { exact: true }).hover()
+        await sleep(random(1000, 2000))
+        await this._page!.getByText(settings.searchTimeRange, { exact: true }).click()
+      }
+      await sleep(random(1000, 2000))
+      await this._page!.waitForSelector('#search-result-container')
+      await this._page!.locator('.search-result-card').first().click()
+      console.log('已点击第一个搜索结果')
+    } else {
+      console.log('未找到搜索元素，跳过搜索')
+    }
   }
 }

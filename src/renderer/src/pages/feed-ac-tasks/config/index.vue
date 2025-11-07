@@ -7,6 +7,7 @@ import { storeToRefs } from 'pinia'
 import RulesConfig from './components/RulesConfig/index.vue'
 import KeywordBlocking from './components/KeywordBlocking.vue'
 import FormCount from './components/FormCount.vue'
+import FormSearch from './components/FormSearch.vue'
 import RuntimeSettings from './components/RuntimeSettings.vue'
 import StartButton from './components/StartButton.vue'
 import ConfigManager from './components/ConfigManager.vue'
@@ -84,6 +85,7 @@ onBeforeUnmount(() => {
 
           <!-- 评论次数组件 -->
           <FormCount />
+          <FormSearch />
 
           <!-- 运行设置组件 -->
           <RuntimeSettings />

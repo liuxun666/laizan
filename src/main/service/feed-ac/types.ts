@@ -10,6 +10,11 @@ export interface FeedListResponse {
   aweme_list: FeedItem[]
 }
 
+export interface FeedItemStatistics {
+  comment_count: number
+}
+
+
 export interface FeedItem {
   author: {
     nickname: string
@@ -20,6 +25,7 @@ export interface FeedItem {
   desc: string
   video_tag: VideoTag[]
   share_url: string
+  statistics: FeedItemStatistics
 }
 
 export interface CommentResponse {

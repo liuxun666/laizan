@@ -180,6 +180,14 @@ export default class ACTask extends EventEmitter {
         console.log('暂无视频标签')
       }
 
+      if(storage.hasCommentedId(videoInfo.aweme_id)) {
+        console.log('跳过已评论的视频')
+        this._emitProgress('skip-commented', '跳过已评论的视频')
+        await sleep(random(1500, 3000))
+        await this._dyElementHandler.goToNextVideo()
+        continue
+      }
+
       // 关键词屏蔽（基于设置）
       const hitAuthorBlock = (settings.authorBlockKeywords || []).some((keyword) =>
         videoInfo.author.nickname.includes(keyword)
@@ -251,6 +259,7 @@ export default class ACTask extends EventEmitter {
             this._recordVideoComment(videoInfo.aweme_id, videoInfo, commnetResult.commentText || '')
             console.log(`评论发送成功，已评论次数：${commentCount}/${maxCount}`)
             this._emitProgress('comment-success', `评论成功 ${commentCount}/${maxCount}`)
+            storage.addCommentedId(videoInfo.aweme_id)
             await sleep(random(1000, 3000))
             console.log('关闭评论区')
             await this._dyElementHandler.closeCommentSection()
@@ -873,8 +882,10 @@ export default class ACTask extends EventEmitter {
       })
 
       // 使用键盘快捷键 "X" 开启评论区
-      console.log('使用快捷键X打开评论区')
-      await this._page?.keyboard.press('x')
+      if (!this._dyElementHandler.isCommentSectionOpen()){
+        console.log('使用快捷键X打开评论区')
+        await this._page?.keyboard.press('x')
+      }
 
       // 等待评论数据
       return await commentDataPromise

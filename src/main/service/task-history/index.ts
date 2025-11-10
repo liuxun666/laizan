@@ -2,6 +2,7 @@ import { customAlphabet } from 'nanoid'
 import { TaskHistoryRecord, VideoRecord } from '@/shared/task-history'
 import { FeedAcSettingsV2 } from '@/shared/feed-ac-setting'
 import { taskHistoryStorage } from './storage'
+import { Platform } from '@/shared/common'
 
 // 使用 nanoid 生成任务 ID
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 16)
@@ -13,11 +14,13 @@ export class TaskHistoryService {
   /**
    * 创建新的任务记录
    * @param settings 任务配置快照
+   * @param platform 平台类型
    * @returns 创建的任务记录
    */
-  createTask(settings: FeedAcSettingsV2): TaskHistoryRecord {
+  createTask(settings: FeedAcSettingsV2, platform: Platform = 'douyin'): TaskHistoryRecord {
     const task: TaskHistoryRecord = {
       id: nanoid(),
+      platform,
       startTime: Date.now(),
       endTime: null,
       status: 'running',

@@ -101,7 +101,66 @@ export const api = {
   getTaskDetail: (taskId: string): Promise<TaskHistoryRecord | null> =>
     ipcRenderer.invoke('taskDetail:get', taskId),
   getCurrentRunningTask: (): Promise<TaskHistoryRecord | null> =>
-    ipcRenderer.invoke('taskDetail:getCurrentRunning')
+    ipcRenderer.invoke('taskDetail:getCurrentRunning'),
+  
+  // 小红书相关API
+  hasXHSAuth: (): Promise<boolean> => ipcRenderer.invoke('xhs-ac:check-auth'),
+  loginXHS: (): Promise<void> => ipcRenderer.invoke('xhs-ac:login'),
+  logoutXHS: (): Promise<void> => ipcRenderer.invoke('xhs-ac:logout'),
+  getXHSSettings: (): Promise<FeedAcSettingsV2> => ipcRenderer.invoke('xhs-setting:get'),
+  importXHSSettings: (
+    config: FeedAcSettingsV2
+  ): Promise<{ ok: boolean; data?: FeedAcSettingsV2; message?: string }> =>
+    ipcRenderer.invoke('xhs-setting:import', config),
+  clearXHSSettings: (): Promise<FeedAcSettingsV2> => ipcRenderer.invoke('xhs-setting:clear'),
+  createXHSRuleGroup: (
+    ruleGroupData: Omit<FeedAcRuleGroups, 'id'>,
+    parentId?: string
+  ): Promise<{ ok: boolean; data?: FeedAcSettingsV2; message?: string }> =>
+    ipcRenderer.invoke('xhs-setting:createRuleGroup', ruleGroupData, parentId),
+  updateXHSRuleGroup: (
+    id: string,
+    updates: Partial<Omit<FeedAcRuleGroups, 'id'>>
+  ): Promise<{ ok: boolean; data?: FeedAcSettingsV2; message?: string }> =>
+    ipcRenderer.invoke('xhs-setting:updateRuleGroup', id, updates),
+  deleteXHSRuleGroup: (
+    id: string
+  ): Promise<{ ok: boolean; data?: FeedAcSettingsV2; message?: string }> =>
+    ipcRenderer.invoke('xhs-setting:deleteRuleGroup', id),
+  copyXHSRuleGroup: (
+    id: string,
+    parentId?: string
+  ): Promise<{ ok: boolean; data?: FeedAcSettingsV2; message?: string }> =>
+    ipcRenderer.invoke('xhs-setting:copyRuleGroup', id, parentId),
+  updateXHSExceptRuleGroup: (
+    updates: Partial<Omit<FeedAcSettingsV2, 'ruleGroups' | 'version'>>
+  ): Promise<{ ok: boolean; data?: FeedAcSettingsV2; message?: string }> =>
+    ipcRenderer.invoke('xhs-setting:updateExceptRuleGroup', updates),
+  startXHSTask: (): Promise<{ ok: boolean; taskId?: string; message?: string }> =>
+    ipcRenderer.invoke('xhs-ac:start-task'),
+  stopXHSTask: (): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('xhs-ac:stop-task'),
+  onXHSTaskProgress: (
+    handler: (p: { type: string; message: string; timestamp: number }) => void
+  ): (() => void) => {
+    const listener = (_, p: { type: string; message: string; timestamp: number }): void =>
+      handler(p)
+    ipcRenderer.on('xhs-ac:task-progress', listener)
+    return () => ipcRenderer.removeListener('xhs-ac:task-progress', listener)
+  },
+  onXHSTaskEnded: (
+    handler: (p: { status: 'success' | 'stopped' | 'error'; message?: string }) => void
+  ): (() => void) => {
+    const listener = (_, p: { status: 'success' | 'stopped' | 'error'; message?: string }): void =>
+      handler(p)
+    ipcRenderer.on('xhs-ac:task-ended', listener)
+    return () => ipcRenderer.removeListener('xhs-ac:task-ended', listener)
+  },
+  // 小红书任务历史相关API
+  getXHSTaskHistoryList: (): Promise<TaskHistoryRecord[]> => ipcRenderer.invoke('xhs-ac:get-task-history'),
+  deleteXHSTaskHistory: (taskId: string): Promise<{ ok: boolean; message?: string }> =>
+    ipcRenderer.invoke('xhs-ac:delete-task-history', taskId),
+  getXHSTaskDetail: (taskId: string): Promise<TaskHistoryRecord | null> =>
+    ipcRenderer.invoke('xhs-ac:get-task-detail', taskId)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -7,7 +7,9 @@ const Store = ((__Store as any).default || __Store) as typeof __Store
 
 export const StorageKey = {
   auth: 'auth',
+  authXHS: 'authXHS',
   feedAcSetting: 'feedAcSetting',
+  xhsSetting: 'xhsSetting',
   aiSettings: 'aiSettings',
   browserExecPath: 'browserExecPath',
   commentedIds: 'commentedIds',
@@ -16,9 +18,11 @@ export const StorageKey = {
 type AuthState = Awaited<ReturnType<BrowserContext['storageState']>>
 
 type StorageSchema = Record<typeof StorageKey.auth, AuthState> &
+  Record<typeof StorageKey.authXHS, AuthState> &
+  Record<typeof StorageKey.xhsSetting, FeedAcSettingsUnion> &
   Record<typeof StorageKey.feedAcSetting, FeedAcSettingsUnion> &
   Record<typeof StorageKey.aiSettings, AISettings> &
-  Record<typeof StorageKey.commentedIds, Set<string>> &
+  Record<typeof StorageKey.commentedIds, Record<string, true>> &
   Record<typeof StorageKey.browserExecPath, string>
 
 class Storage {
@@ -37,14 +41,14 @@ class Storage {
   }
 
   addCommentedId(id: string): void {
-    const commentedIds = this.get(StorageKey.commentedIds) || new Set<string>()
-    commentedIds.add(id)
+    const commentedIds = this.get(StorageKey.commentedIds) || {}
+    commentedIds[id] = true
     this.set(StorageKey.commentedIds, commentedIds)
   }
 
   hasCommentedId(id: string): boolean {
-    const commentedIds = this.get(StorageKey.commentedIds) || new Set<string>()
-    return commentedIds.has(id)
+    const commentedIds = this.get(StorageKey.commentedIds) || {}
+    return id in commentedIds
   }
   
   delete<K extends keyof StorageSchema>(key: K): void {

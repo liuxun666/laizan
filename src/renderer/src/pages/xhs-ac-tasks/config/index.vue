@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount } from 'vue'
 import { NForm } from 'naive-ui'
-import { useTaskStore } from '@renderer/stores/feed-ac-tasks/task'
+import { useTaskStore } from '@renderer/stores/xhs-ac-tasks/task'
 import { useLogsStore } from '@renderer/stores/feed-ac-tasks/logs'
 import { storeToRefs } from 'pinia'
 import RulesConfig from './components/RulesConfig/index.vue'
@@ -9,20 +9,20 @@ import KeywordBlocking from './components/KeywordBlocking.vue'
 import FormCount from './components/FormCount.vue'
 import FormSearch from './components/FormSearch.vue'
 import RuntimeSettings from './components/RuntimeSettings.vue'
+import LoginButton from './components/LoginButton.vue'
 import StartButton from './components/StartButton.vue'
 import ConfigManager from './components/ConfigManager.vue'
 import TemplateQuickStart from './components/TemplateQuickStart.vue'
-import { useSettingsStore } from './stores/settings'
+import { useSettingsStore } from '@renderer/pages/xhs-ac-tasks/config/stores/settings'
 import HistoryButton from './components/HistoryButton.vue'
-import LoginButton from './components/LoginButton.vue'
-import FlushType from './components/FlushType.vue'
-import { useAuthStore } from '@renderer/stores/auth'
+import { useAuthStore } from '@renderer/stores/xhs-ac-tasks/auth'
 
 // 使用 Pinia stores
 const taskStore = useTaskStore()
 const logsStore = useLogsStore()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
+
 const { resetTaskStatus, syncTaskStatus } = taskStore
 const { addLog, setupAutoScroll } = logsStore
 const { settings } = storeToRefs(settingsStore)
@@ -42,12 +42,12 @@ onMounted(async () => {
   await syncTaskStatus()
 
   // 监听任务进度
-  offProgress = window.api.onTaskProgress((p) => {
+  offProgress = window.api.onXHSTaskProgress((p) => {
     addLog(p.message)
   })
 
   // 监听任务结束
-  offEnded = window.api.onTaskEnded((p) => {
+  offEnded = window.api.onXHSTaskEnded((p) => {
     resetTaskStatus()
     if (p.status === 'error') {
       addLog(`任务异常: ${p.message ?? ''}`)
@@ -90,11 +90,7 @@ onBeforeUnmount(() => {
 
           <!-- 评论次数组件 -->
           <FormCount />
-          <!-- 浏览方式 -->
-          <FlushType />
-          <template v-if='settings.flushType === "search"'>
-            <FormSearch />
-          </template>
+          <FormSearch />
 
           <!-- 运行设置组件 -->
           <RuntimeSettings />

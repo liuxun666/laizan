@@ -5,7 +5,7 @@
         type="primary"
         strong
         :loading="taskStatus === 'starting'"
-        :disabled="isRunning"
+        :disabled="isRunning || !authStore.hasAuth"
         @click="handleStart"
       >
         <template #icon>
@@ -39,12 +39,15 @@ import { PlayOutline } from '@vicons/ionicons5'
 import DouyinLimitDialog from './DouyinLimitDialog.vue'
 import { LocalStorageManager, STORAGE_KEYS } from '@renderer/utils/storage-keys'
 import { FeedAcRuleGroups } from '@/shared/feed-ac-setting'
+import { useAuthStore } from '@renderer/stores/auth'
 
 const taskStore = useTaskStore()
 const settingsStore = useSettingsStore()
 const logsStore = useLogsStore()
 const message = useMessage()
 const router = useRouter()
+const authStore = useAuthStore()
+
 
 const { taskStatus, isRunning } = storeToRefs(taskStore)
 const { settings } = storeToRefs(settingsStore)
@@ -94,6 +97,10 @@ const validateForm = (): boolean => {
 
 const handleStart = async (): Promise<void> => {
   try {
+    if (!authStore.hasAuth) {
+      message.warning('请先登录')
+      return
+    }
     // 表单验证
     if (!validateForm()) {
       return

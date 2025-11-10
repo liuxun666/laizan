@@ -12,6 +12,9 @@ import { registerDebugIPC } from './ipc/debug'
 import { registerTaskHistoryIPC } from './ipc/task-history'
 import { registerTaskDetailIPC } from './ipc/task-detail'
 import { taskHistoryService } from './service/task-history'
+import { setupXHSACIPC } from './ipc/xhs-ac'
+import { registerXHSSettingIPC } from './ipc/xhs-setting'
+
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -71,6 +74,8 @@ app.whenReady().then(() => {
   registerDebugIPC()
   registerTaskHistoryIPC()
   registerTaskDetailIPC()
+  setupXHSACIPC()
+  registerXHSSettingIPC()
 
   createWindow()
 

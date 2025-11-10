@@ -37,13 +37,15 @@ export default class DYElementHandler {
   async closeCommentSection(): Promise<void> {
     try {
       // 使用键盘快捷键 "X" 关闭评论区
-      console.log('使用快捷键X关闭评论区')
-      await this._page?.locator('#semiTabcomment').click()
-      await sleep(random(1000, 2000))
-      await this._page?.keyboard.press('x')
+      if (await this.isCommentSectionOpen()){
+        console.log('使用快捷键X关闭评论区')
+        await this._page?.locator('#semiTabcomment').click()
+        await sleep(random(1000, 2000))
+        await this._page?.keyboard.press('x')
 
-      // 给评论区收起一些时间
-      await sleep(500)
+        // 给评论区收起一些时间
+        await sleep(500)
+      }
     } catch (error) {
       console.log('关闭评论区时出错:', error)
     }

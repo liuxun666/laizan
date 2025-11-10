@@ -34,8 +34,8 @@ function regenerateRuleGroupIds(ruleGroup: FeedAcRuleGroups): FeedAcRuleGroups {
   return newRuleGroup
 }
 
-export function getFeedAcSettings(): FeedAcSettingsV2 {
-  const saved = storage.get(StorageKey.feedAcSetting)
+export function getXHSSettings(): FeedAcSettingsV2 {
+  const saved = storage.get(StorageKey.xhsSetting)
   if (!saved) {
     return getDefaultFeedAcSettingsV2()
   }
@@ -46,7 +46,7 @@ export function getFeedAcSettings(): FeedAcSettingsV2 {
     console.log('检测到 v1 配置，正在自动迁移到 v2...')
     const migrated = getUnifiedFeedAcSettings(saved)
     // 自动保存迁移后的配置
-    storage.set(StorageKey.feedAcSetting, migrated)
+    storage.set(StorageKey.xhsSetting, migrated)
     return migrated
   }
 
@@ -58,9 +58,9 @@ export function getFeedAcSettings(): FeedAcSettingsV2 {
   return getDefaultFeedAcSettingsV2()
 }
 
-export function updateFeedAcSettings(partial: Partial<FeedAcSettingsV2>): FeedAcSettingsV2 {
+export function updateXHSSettings(partial: Partial<FeedAcSettingsV2>): FeedAcSettingsV2 {
   console.log('更新 v2 设置：', partial)
-  const current = getFeedAcSettings()
+  const current = getXHSSettings()
   const next: FeedAcSettingsV2 = {
     ...current,
     ...partial,
@@ -78,12 +78,12 @@ export function updateFeedAcSettings(partial: Partial<FeedAcSettingsV2>): FeedAc
         ? (partial.watchTimeRangeSeconds as [number, number])
         : current.watchTimeRangeSeconds
   }
-  storage.set(StorageKey.feedAcSetting, next)
+  storage.set(StorageKey.xhsSetting, next)
   return next
 }
 
 export function clearFeedAcSettings(): FeedAcSettingsV2 {
-  storage.delete(StorageKey.feedAcSetting)
+  storage.delete(StorageKey.xhsSetting)
   return getDefaultFeedAcSettingsV2()
 }
 
@@ -169,7 +169,7 @@ export function createRuleGroup(
   ruleGroupData: Omit<FeedAcRuleGroups, 'id'>,
   parentId?: string
 ): FeedAcSettingsV2 {
-  const current = getFeedAcSettings()
+  const current = getXHSSettings()
   const newRuleGroup: FeedAcRuleGroups = {
     ...ruleGroupData,
     id: generateRuleGroupId()
@@ -191,7 +191,7 @@ export function createRuleGroup(
     }
   }
 
-  storage.set(StorageKey.feedAcSetting, current)
+  storage.set(StorageKey.xhsSetting, current)
   return current
 }
 
@@ -204,14 +204,14 @@ export function updateRuleGroup(
   id: string,
   updates: Partial<Omit<FeedAcRuleGroups, 'id'>>
 ): FeedAcSettingsV2 {
-  const current = getFeedAcSettings()
+  const current = getXHSSettings()
   const success = updateRuleGroupById(current.ruleGroups, id, updates)
 
   if (!success) {
     throw new Error(`未找到规则组: ${id}`)
   }
 
-  storage.set(StorageKey.feedAcSetting, current)
+  storage.set(StorageKey.xhsSetting, current)
   return current
 }
 
@@ -220,14 +220,14 @@ export function updateRuleGroup(
  * @param id 规则组 ID
  */
 export function deleteRuleGroup(id: string): FeedAcSettingsV2 {
-  const current = getFeedAcSettings()
+  const current = getXHSSettings()
   const success = deleteRuleGroupById(current.ruleGroups, id)
 
   if (!success) {
     throw new Error(`未找到规则组: ${id}`)
   }
 
-  storage.set(StorageKey.feedAcSetting, current)
+  storage.set(StorageKey.xhsSetting, current)
   return current
 }
 
@@ -237,7 +237,7 @@ export function deleteRuleGroup(id: string): FeedAcSettingsV2 {
  * @param parentId 目标父规则组 ID（可选，不传则作为根规则组）
  */
 export function copyRuleGroup(id: string, parentId?: string): FeedAcSettingsV2 {
-  const current = getFeedAcSettings()
+  const current = getXHSSettings()
   const found = findRuleGroupById(current.ruleGroups, id)
 
   if (!found) {
@@ -263,7 +263,7 @@ export function copyRuleGroup(id: string, parentId?: string): FeedAcSettingsV2 {
     }
   }
 
-  storage.set(StorageKey.feedAcSetting, current)
+  storage.set(StorageKey.xhsSetting, current)
   return current
 }
 
@@ -274,7 +274,7 @@ export function copyRuleGroup(id: string, parentId?: string): FeedAcSettingsV2 {
 export function updateExceptRuleGroup(
   updates: Partial<Omit<FeedAcSettingsV2, 'ruleGroups' | 'version'>>
 ): FeedAcSettingsV2 {
-  const current = getFeedAcSettings()
+  const current = getXHSSettings()
   const next: FeedAcSettingsV2 = {
     ...current,
     ...updates,
@@ -292,8 +292,8 @@ export function updateExceptRuleGroup(
         ? (updates.watchTimeRangeSeconds as [number, number])
         : current.watchTimeRangeSeconds
   }
-  console.log('updateExceptRuleGroup', next)
-  storage.set(StorageKey.feedAcSetting, next)
+
+  storage.set(StorageKey.xhsSetting, next)
   return next
 }
 
@@ -306,7 +306,7 @@ export function importFullSettings(config: FeedAcSettingsV2): FeedAcSettingsV2 {
     ...config,
     version: 'v2' // 确保版本标识
   }
-  storage.set(StorageKey.feedAcSetting, normalized)
+  storage.set(StorageKey.xhsSetting, normalized)
   return normalized
 }
 
@@ -321,6 +321,7 @@ export function getDefaultFeedAcSettingsV2(): FeedAcSettingsV2 {
     onlyCommentActiveVideo: false,
     maxCount: 10,
     flushType: 'recommend',
+    isSearchEnabled: false,
     searchWord: '',
     searchSort: '',
     searchTimeRange: ''
@@ -364,7 +365,8 @@ export function migrateV1ToV2(v1Config: FeedAcSettings): FeedAcSettingsV2 {
     watchTimeRangeSeconds: [...v1Config.watchTimeRangeSeconds],
     onlyCommentActiveVideo: v1Config.onlyCommentActiveVideo,
     maxCount: 10, // 默认值
-    flushType: 'recommend', // 默认值
+    flushType: 'recommend',
+    isSearchEnabled: false, // 默认值
     searchWord: '',
     searchSort: '',
     searchTimeRange: ''

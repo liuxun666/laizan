@@ -75,8 +75,9 @@ const menuOptions: MenuOption[] = [
         key: 'xhs',
         children: [
           {
-            label: '自动评论引流（开发中）',
-            disabled: true
+            label: '自动评论引流',
+            key: 'xhs-ac-tasks-config',
+            routeName: 'xhsAcTasksConfig'
           }
         ]
       }

@@ -49,6 +49,7 @@ export interface FeedAcSettingsV2 {
   watchTimeRangeSeconds: [number, number]
   onlyCommentActiveVideo: boolean
   maxCount: number
+  flushType: 'recommend' | 'follow' | 'search'
   isSearchEnabled: boolean
   searchWord: string
   searchSort: string

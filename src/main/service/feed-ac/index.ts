@@ -60,8 +60,6 @@ export async function loginAndStorageState(): Promise<void> {
   )
   if (isLogin) {
     storage.set(StorageKey.auth, state)
-  } else {
-    storage.delete(StorageKey.auth)
   }
   await context.close()
   await browser.close()
@@ -101,20 +99,19 @@ export default class ACTask extends EventEmitter {
     this._dyElementHandler = new DYElementHandler(this._page)
   }
 
-  
-
   public async run(): Promise<string> {
     const settings = getFeedAcSettings()
+    console.log('settings', settings)
     await this._launch()
-
-    console.log(`任务已启动，ID: ${this._taskId}`)
-
     // 设置视频数据监听
     await this._setupVideoDataListener()
     console.log('视频数据监听已设置')
+    console.log(`任务已启动，ID: ${this._taskId}`)
     this._emitProgress('ready', '视频数据监听已设置')
-    if (settings.isSearchEnabled) {
+    if (settings.flushType === 'search') {
       await this.searchByConfig(settings)
+    } else if (settings.flushType === 'follow') {
+      await this.clickFollowTab()
     }
     // 等待假视频图片消失 (recommend-fake-video-img)
     await this._page!.waitForSelector('.recommend-fake-video-img', {
@@ -363,6 +360,34 @@ export default class ACTask extends EventEmitter {
           console.log('解析视频Feed接口响应时出错:', error)
         }
       }
+      // 你的关注
+      if (url.includes('https://www.douyin.com/aweme/v1/web/follow/feed/')) {
+        console.log('捕获到关注者接口请求')
+        try {
+          // 尝试解析JSON响应
+          const res = await response.json()
+          const aweme_list: FeedItem[] = []
+          for (let i = 0; i < res.data.length; i++) {
+            const aweme_item = res.data[i]['aweme'] as FeedItem
+            if (aweme_item) {
+              aweme_list.push(aweme_item)
+            }
+          }
+          const responseBody = { aweme_list: aweme_list } as FeedListResponse
+          if (responseBody && responseBody.aweme_list && Array.isArray(responseBody.aweme_list)) {
+            console.log(`接收到${responseBody.aweme_list.length}条视频数据`)
+
+            // 缓存视频数据
+            responseBody.aweme_list.forEach((video) => {
+              this._videoDataCache.set(video.aweme_id, video)
+            })
+
+            console.log(`视频数据缓存更新，当前缓存数量: ${this._videoDataCache.size}`)
+          }
+        } catch (error) {
+          console.log('解析视频Feed接口响应时出错:', error)
+        }
+      }
       // 搜索结果
       if (url.includes('https://www.douyin.com/aweme/v1/web/general/search/single/')) {
         console.log('捕获到视频Search接口请求')
@@ -370,7 +395,7 @@ export default class ACTask extends EventEmitter {
         try {
           // 尝试解析JSON响应
           const res = await response.json()
-          const aweme_list = []
+          const aweme_list: FeedItem[] = []
           for (let i = 0; i < res.data.length; i++) {
             const aweme_item = res.data[i]['aweme_info'] as FeedItem
             if (aweme_item) {
@@ -416,7 +441,7 @@ export default class ACTask extends EventEmitter {
       }
 
       // 获取视频ID属性
-      const videoId = await activeVideoElement.getAttribute('data-e2e-vid')
+      const videoId = await activeVideoElement.getAttribute('data-e2e-vid', { timeout: 5000 })
 
       if (!videoId) {
         console.log('未找到视频ID')
@@ -544,7 +569,7 @@ export default class ACTask extends EventEmitter {
     shouldViewComment: boolean
     matchedRuleGroup?: FeedAcRuleGroups
   }> {
-    if(videoInfo.statistics.comment_count < 40 || videoInfo.statistics.comment_count > 2000) {
+    if(videoInfo.statistics.comment_count < 30 || videoInfo.statistics.comment_count > 3000) {
         console.log(`视频评论数量: ${videoInfo.statistics.comment_count} 不符合条件，跳过该视频`)
         return { shouldSimulateWatch: false, shouldViewComment: false }
       }
@@ -609,6 +634,11 @@ export default class ACTask extends EventEmitter {
     matchedRuleGroup?: FeedAcRuleGroups
   ): Promise<{ success: boolean; commentText?: string; reason?: string }> {
     try {
+      if(!await this._dyElementHandler.isCommentSectionOpen()){
+        console.log('使用快捷键X打开评论区')
+        await this._page?.keyboard.press('x')
+        await sleep(1000)
+      }
       // 从用户配置中获取随机评论内容
       const randomComment = this._getRandomComment(matchedRuleGroup)
       console.log(`随机选择评论内容: ${randomComment}`)
@@ -825,7 +855,6 @@ export default class ACTask extends EventEmitter {
           const url = response.url()
           if (url.includes('https://www.douyin.com/aweme/v1/web/comment/list/')) {
             console.log('捕获到评论列表接口请求')
-
             try {
               // 尝试解析JSON响应
               const responseBody = (await response.json().catch(() => null)) as CommentResponse
@@ -882,7 +911,7 @@ export default class ACTask extends EventEmitter {
       })
 
       // 使用键盘快捷键 "X" 开启评论区
-      if (!this._dyElementHandler.isCommentSectionOpen()){
+      if (!await this._dyElementHandler.isCommentSectionOpen()){
         console.log('使用快捷键X打开评论区')
         await this._page?.keyboard.press('x')
       }
@@ -1088,11 +1117,24 @@ export default class ACTask extends EventEmitter {
         await this._page!.getByText(settings.searchTimeRange, { exact: true }).click()
       }
       await sleep(random(1000, 2000))
+      // 再次搜索
+      const searchButton = await this._page!.waitForSelector('[data-e2e="searchbar-button"]', { timeout: 5000 })
+      if(searchButton){
+        await searchButton.click()
+        await sleep(random(1000, 2000))
+      }
       await this._page!.waitForSelector('#search-result-container')
       await this._page!.locator('.search-result-card').first().click()
       console.log('已点击第一个搜索结果')
     } else {
       console.log('未找到搜索元素，跳过搜索')
     }
+  }
+
+  private async clickFollowTab() {
+    const followTab = await this._page?.waitForSelector('.tab-follow', { state: 'visible' })
+    await followTab?.click()
+    await sleep(random(1000, 2000))
+    console.log('已点击关注tab')
   }
 }

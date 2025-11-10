@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
-  const hasAuth = ref<boolean | null>(null)
+  const hasAuth = ref<boolean>(false)
 
   const login = async (): Promise<void> => {
     await window.api.login()

@@ -1,4 +1,5 @@
 import { FeedAcSettingsV2 } from './feed-ac-setting'
+import { Platform } from './common'
 
 /**
  * 任务状态枚举
@@ -37,6 +38,8 @@ export interface VideoRecord {
 export interface TaskHistoryRecord {
   /** 任务唯一标识，使用 nanoid 生成 */
   id: string
+  /** 平台类型 */
+  platform: Platform
   /** 任务开始时间戳（毫秒） */
   startTime: number
   /** 任务结束时间戳，运行中为 null */

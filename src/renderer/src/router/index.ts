@@ -31,6 +31,26 @@ const routes: RouteRecordRaw[] = [
                 component: () => import('@renderer/pages/feed-ac-tasks/detail/index.vue')
               }
             ]
+          },
+          {
+            path: 'xhs-ac-tasks',
+            children: [
+              {
+                path: 'config',
+                name: 'xhsAcTasksConfig',
+                component: () => import('@renderer/pages/xhs-ac-tasks/config/index.vue')
+              },
+              {
+                path: 'history',
+                name: 'xhsAcTasksHistory',
+                component: () => import('@renderer/pages/xhs-ac-tasks/history/index.vue')
+              },
+              {
+                path: 'detail/:taskId',
+                name: 'xhsAcTasksDetail',
+                component: () => import('@renderer/pages/xhs-ac-tasks/detail/index.vue')
+              }
+            ]
           }
         ]
       },
@@ -63,12 +83,12 @@ router.beforeEach(async (to) => {
   if (authStore.hasAuth === null) {
     await authStore.checkAuth()
   }
-  const isAuthed = !!authStore.hasAuth
-  if (to.meta.requiresAuth && !isAuthed) {
-    return { name: 'login' }
-  }
-  if (to.name === 'login' && isAuthed) {
-    return { name: 'index' }
-  }
+  // const isAuthed = !!authStore.hasAuth
+  // if (to.meta.requiresAuth && !isAuthed) {
+  //   return { name: 'login' }
+  // }
+  // if (to.name === 'login' && isAuthed) {
+  //   return { name: 'index' }
+  // }
   return true
 })
